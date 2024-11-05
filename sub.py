@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
 
+# Classe para o dispositivo subscriber MQTT
 class MQTTSubscriberDevice:
     def __init__(self, broker="localhost", port=1883, timelive=60):
         self.broker = broker
@@ -14,7 +15,7 @@ class MQTTSubscriberDevice:
         client.subscribe("/data")
 
     def on_message(self, client, userdata, msg):
-        return msg.payload.decode()
+        print("Mensagem recebida: ", msg.payload.decode())
 
     def set_on_message_callback(self, callback):
         self.client.on_message = callback

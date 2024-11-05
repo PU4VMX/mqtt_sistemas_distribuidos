@@ -1,54 +1,13 @@
-import paho.mqtt.client as mqtt
 import random
 import threading
 import turtle
 import time
 import json
 
-# Classe para o dispositivo subscriber MQTT
-class MQTTSubscriberDevice:
-    def __init__(self, broker="localhost", port=1883, timelive=60):
-        self.broker = broker
-        self.port = port
-        self.timelive = timelive
-        self.client = mqtt.Client()
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-
-    def on_connect(self, client, userdata, flags, rc):
-        print("Conectado com código de resultado " + str(rc))
-        client.subscribe("/data")
-
-    def on_message(self, client, userdata, msg):
-        print("Mensagem recebida: ", msg.payload.decode())
-
-    def set_on_message_callback(self, callback):
-        self.client.on_message = callback
-
-    def start(self):
-        self.client.connect(self.broker, self.port, self.timelive)
-        self.client.loop_start()
+from pub import MQTTPublisherDevice
+from sub import MQTTSubscriberDevice
 
 
-# Classe para o dispositivo publisher MQTT
-class MQTTPublisherDevice:
-    def __init__(self, broker="localhost", port=1883, client_id="admin", id=0):
-        self.broker = broker
-        self.port = port
-        self.client = mqtt.Client(client_id)
-        self.client.on_publish = self.on_publish
-        self.client.connect(self.broker, self.port)
-        self.id = id
-
-    def on_publish(self, client, userdata, result):
-        print("Dado publicado com sucesso")
-
-    def publish_data(self, topic="/data", x=0, y=0):
-        data = json.dumps({"id": self.id, "x": x, "y": y})
-        self.client.publish(topic, data)
-
-    def start(self):
-        self.client.loop_start()
 
 
 # Classe principal do jogo
