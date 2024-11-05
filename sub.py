@@ -1,37 +1,24 @@
-import threading
 import paho.mqtt.client as mqtt
 
-class MQTTClientSubscriber:
+class MQTTSubscriberDevice:
     def __init__(self, broker="localhost", port=1883, timelive=60):
         self.broker = broker
         self.port = port
         self.timelive = timelive
         self.client = mqtt.Client()
-        
-        # Configura os callbacks
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
-    def connect(self):
-        """Conecta ao broker MQTT."""
-        self.client.connect(self.broker, self.port, self.timelive)
-
     def on_connect(self, client, userdata, flags, rc):
-        """Callback executado ao conectar com sucesso ao broker."""
-        print("Connected with result code " + str(rc))
+        print("Conectado com código de resultado " + str(rc))
         client.subscribe("/data")
 
-    def on_message(self, client, userdata, message):
-        """Callback executado ao receber uma mensagem."""
-        print("Message received: " + message.payload.decode())
+    def on_message(self, client, userdata, msg):
+        return msg.payload.decode()
+
+    def set_on_message_callback(self, callback):
+        self.client.on_message = callback
 
     def start(self):
-        """Inicia o loop de escuta do cliente MQTT."""
-        self.connect()
-        self.client.loop_forever()
-
-    def start_thread(self):
-        """Inicia o loop de escuta do cliente MQTT em uma thread separada."""
-        mqtt_thread = threading.Thread(target=self.start)
-        mqtt_thread.start()
-
+        self.client.connect(self.broker, self.port, self.timelive)
+        self.client.loop_start()

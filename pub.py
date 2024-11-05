@@ -1,24 +1,22 @@
-import paho.mqtt.client as mqtt
+import paho.mqtt.client as paho
 
-class MQTTPublisher:
-    def __init__(self, client_id="admin", broker="localhost", port=1883):
-        self.client_id = client_id
+class MQTTPublisherDevice:
+    def __init__(self, broker="localhost", port=1883, client_id="admin", id=0):
         self.broker = broker
         self.port = port
-        self.client = mqtt.Client(client_id=self.client_id, protocol=mqtt.MQTTv311)
-        
-        # Configura o callback de publicação
+        self.client = paho.Client(client_id)
         self.client.on_publish = self.on_publish
-
-    def connect(self):
-        """Conecta ao broker MQTT."""
         self.client.connect(self.broker, self.port)
-
-    def publish_messages(self, topic="/data", direction="stop", color="blue"):
-        """Publica mensagens no broker MQTT."""
-        self.client.publish(topic, f"{self.client_id},{direction}, {color}")
-
-    def on_publish(self, client, userdata, mid):
-        """Callback executado ao publicar uma mensagem."""
-        print(f"Message {mid} published.")
+        self.id = id
         
+    def on_publish(self, client, userdata, result):
+        print("Dado publicado com sucesso")
+        
+    #payload json
+    def publish_data(self, topic="/data", x=0, y=0):
+        data = f'{{"id": {self.id}, "x": {x}, "y": {y}}}'
+        self.client.publish(topic, data)
+
+    def start(self):
+        self.client.loop_start()
+

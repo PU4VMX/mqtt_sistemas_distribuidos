@@ -1,141 +1,165 @@
+import paho.mqtt.client as mqtt
+import random
+import threading
 import turtle
 import time
-import threading
-import random
-from pub import MQTTPublisher
-from sub import MQTTClientSubscriber
+import json
+
+# Classe para o dispositivo subscriber MQTT
+class MQTTSubscriberDevice:
+    def __init__(self, broker="localhost", port=1883, timelive=60):
+        self.broker = broker
+        self.port = port
+        self.timelive = timelive
+        self.client = mqtt.Client()
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+
+    def on_connect(self, client, userdata, flags, rc):
+        print("Conectado com código de resultado " + str(rc))
+        client.subscribe("/data")
+
+    def on_message(self, client, userdata, msg):
+        print("Mensagem recebida: ", msg.payload.decode())
+
+    def set_on_message_callback(self, callback):
+        self.client.on_message = callback
+
+    def start(self):
+        self.client.connect(self.broker, self.port, self.timelive)
+        self.client.loop_start()
 
 
-class MQTTController:
-    def __init__(self, player_id, broker="localhost", port=1883, timelive=60):
-        self.player_id = player_id  # ID do jogador
-        self.publisher = MQTTPublisher(client_id=self.player_id, broker=broker, port=port)
-        self.subscriber = MQTTClientSubscriber(broker=broker, port=port, timelive=timelive)
-        self.subscriber.client.on_message = self.on_message_callback
-        self.players = {}  # Dicionário para armazenar outros jogadores
+# Classe para o dispositivo publisher MQTT
+class MQTTPublisherDevice:
+    def __init__(self, broker="localhost", port=1883, client_id="admin", id=0):
+        self.broker = broker
+        self.port = port
+        self.client = mqtt.Client(client_id)
+        self.client.on_publish = self.on_publish
+        self.client.connect(self.broker, self.port)
+        self.id = id
 
-    def connect(self):
-        self.publisher.connect()
-        self.subscriber.start_thread()
+    def on_publish(self, client, userdata, result):
+        print("Dado publicado com sucesso")
 
-    def publish_direction(self, direction):
-        self.publisher.publish_messages(topic="/data", direction=direction)
+    def publish_data(self, topic="/data", x=0, y=0):
+        data = json.dumps({"id": self.id, "x": x, "y": y})
+        self.client.publish(topic, data)
 
-    def publish_position(self, x, y):
-        self.publisher.publish_messages(topic="/data", position=f"{self.player_id},{x},{y}")
-
-    def close_connection(self):
-        self.publisher.publish_messages(topic="/data", id=0, direction="stop")
-
-    def on_message_callback(self, client, userdata, message):
-        print(f"Mensagem recebida: {message.payload.decode()}")
-        parts = message.payload.decode().split(",")
-
-        # Verifica se a mensagem contém a posição de um jogador
-        if len(parts) == 3:  # ID, X, Y
-            player_id, x, y = parts
-            if player_id not in self.players:
-                self.players[player_id] = turtle.Turtle()  # Cria uma nova tartaruga para o jogador
-                self.players[player_id].speed(0)
-                self.players[player_id].shape("circle")
-                self.players[player_id].color("blue")  # Define a cor para os outros jogadores
-                self.players[player_id].penup()
-
-            # Atualiza a posição do jogador
-            self.players[player_id].updade
-
-    def listen(self):
-        """Inicia o loop de escuta do MQTT."""
-        self.subscriber.client.loop_forever()  # Mantém o cliente em escuta ativa
+    def start(self):
+        self.client.loop_start()
 
 
-class Player:
-    def __init__(self, color):
-        self.head = turtle.Turtle()
-        self.head.speed(0)
-        self.head.shape("circle")
-        self.head.color(color)  # Define a cor do jogador
-        self.head.penup()
-        self.head.goto(0, 0)
-        self.head.direction = "stop"
+# Classe principal do jogo
+class Game:
+    def __init__(self, mqtt_sub, mqtt_pub):
+        self.delay = 0.01
+        self.score = 0
+        self.high_score = 0
+        self.mqtt_sub = mqtt_sub
+        self.mqtt_pub = mqtt_pub
+        self.players = {}
+        self.colors = ["red", "blue", "yellow", "purple", "orange", "pink", "brown", "black"]
 
-    def update_direction(self, direction):
-        if direction == "up" and self.head.direction != "down":
-            self.head.direction = "up"
-        elif direction == "down" and self.head.direction != "up":
-            self.head.direction = "down"
-        elif direction == "left" and self.head.direction != "right":
-            self.head.direction = "left"
-        elif direction == "right" and self.head.direction != "left":
-            self.head.direction = "right"
-        elif direction == "stop":
-            self.head.direction = "stop"
-
-    def move(self, wn, delay):
-        if self.head.direction == "up":
-            self.head.sety(self.head.ycor() + 2)
-        elif self.head.direction == "down":
-            self.head.sety(self.head.ycor() - 2)
-        elif self.head.direction == "left":
-            self.head.setx(self.head.xcor() - 2)
-        elif self.head.direction == "right":
-            self.head.setx(self.head.xcor() + 2)
-
-        if abs(self.head.xcor()) > wn.window_width() / 2 or abs(self.head.ycor()) > wn.window_height() / 2:
-            self.head.goto(0, 0)
-            self.head.direction = "stop"
-
-        wn.update()
-        time.sleep(delay)
-
-
-class GameController:
-    def __init__(self, player_id, color, delay=0.01):
-        self.delay = delay
+        # Configuração da tela
         self.wn = turtle.Screen()
         self.wn.title("Move Game by @Garrocho")
         self.wn.bgcolor("green")
-        self.wn.setup(width=1.0, height=1.0)
+        self.wn.setup(width=1.0, height=1.0, startx=None, starty=None)
         self.wn.tracer(0)
-        self.player = Player(color)  # Passa a cor do jogador
-        self.mqtt_controller = MQTTController(player_id)  # Passa o ID do jogador
 
-    def setup_controls(self):
+        # Criar o jogador local com uma cor aleatória
+        self.player_id = mqtt_pub.id
+        self.create_player(self.player_id)
+
+        # Configuração dos controles de movimento
         self.wn.listen()
-        self.wn.onkeypress(lambda: self.mqtt_controller.publish_direction("up"), "w")
-        self.wn.onkeypress(lambda: self.mqtt_controller.publish_direction("down"), "s")
-        self.wn.onkeypress(lambda: self.mqtt_controller.publish_direction("left"), "a")
-        self.wn.onkeypress(lambda: self.mqtt_controller.publish_direction("right"), "d")
-        self.wn.onkeypress(self.close_game, "Escape")
+        self.wn.onkeypress(self.go_up, "w")
+        self.wn.onkeypress(self.go_down, "s")
+        self.wn.onkeypress(self.go_left, "a")
+        self.wn.onkeypress(self.go_right, "d")
+        self.wn.onkeypress(self.close, "Escape")
 
-    def close_game(self):
-        self.mqtt_controller.close_connection()
+    def create_player(self, player_id):
+        """Cria uma bolinha para o jogador especificado pelo ID"""
+        if player_id not in self.players:
+            color = random.choice(self.colors)
+            player_turtle = turtle.Turtle()
+            player_turtle.speed(0)
+            player_turtle.shape("circle")
+            player_turtle.color(color)
+            player_turtle.penup()
+            player_turtle.goto(0, 0)
+            self.players[player_id] = player_turtle
+
+    def update_position(self):
+        """Atualiza a posição do jogador local e publica os dados"""
+        x = self.players[self.player_id].xcor()
+        y = self.players[self.player_id].ycor()
+        self.mqtt_pub.publish_data(x=x, y=y)
+
+    def go_up(self):
+        y = self.players[self.player_id].ycor()
+        self.players[self.player_id].sety(y + 10)
+        self.update_position()
+
+    def go_down(self):
+        y = self.players[self.player_id].ycor()
+        self.players[self.player_id].sety(y - 10) 
+        self.update_position()
+
+    def go_left(self):
+        x = self.players[self.player_id].xcor()
+        self.players[self.player_id].setx(x - 10)
+        self.update_position()
+
+    def go_right(self):
+        x = self.players[self.player_id].xcor()
+        self.players[self.player_id].setx(x + 10)
+        self.update_position()
+
+    def close(self):
         self.wn.bye()
 
-    def start_game(self):
-        self.mqtt_controller.connect()
-        self.setup_controls()
+    def on_message(self, client, userdata, msg):
+        """Callback para processar mensagens MQTT recebidas"""
+        data = json.loads(msg.payload.decode())
+        player_id = data["id"]
+        x = data["x"]
+        y = data["y"]
+        
+        # Cria o jogador caso não exista ainda
+        self.create_player(player_id)
+        
+        # Atualiza a posição do jogador
+        self.players[player_id].goto(x, y)
 
-        listen_thread = threading.Thread(target=self.mqtt_controller.listen)
-        listen_thread.daemon = True
-        listen_thread.start()
-
-        move_thread = threading.Thread(target=self.run_game_loop)
-        move_thread.daemon = True
-        move_thread.start()
-
-        self.wn.mainloop()
-
-    def run_game_loop(self):
+    def run(self):
+        """Loop principal do jogo"""
         while True:
-            x, y = self.player.move(self.wn, self.delay)
-            # Publica a posição do jogador
-            self.mqtt_controller.publish_position(x, y)
+            self.wn.update()
+            time.sleep(self.delay)
+
+    def start(self):
+        """Inicia o jogo e a escuta de mensagens MQTT"""
+        self.mqtt_sub.set_on_message_callback(self.on_message)
+        threading.Thread(target=self.run).start()
 
 
 if __name__ == "__main__":
-    player_id = str(random.randint(1, 100))  # Gera um ID de jogador aleatório
-    colors = ["blue", "red", "yellow", "orange", "purple", "pink"]
-    color = random.choice(colors)  # Escolhe uma cor aleatória para o jogador
-    game = GameController(player_id, color)  # Passa o ID e a cor do jogador
-    game.start_game()
+    # Instancia o subscriber e publisher MQTT
+    mqtt_sub = MQTTSubscriberDevice()
+    mqtt_pub = MQTTPublisherDevice(id=random.randint(1, 1000))
+
+    # Inicia os dispositivos MQTT em threads separadas
+    threading.Thread(target=mqtt_sub.start).start()
+    threading.Thread(target=mqtt_pub.start).start()
+
+    # Aguarda a conexão MQTT antes de iniciar o jogo
+    time.sleep(2)
+
+    # Inicia o jogo
+    game = Game(mqtt_sub, mqtt_pub)
+    game.start()
+    turtle.done()
