@@ -6,6 +6,8 @@ from fastapi.responses import FileResponse
 from mqtt.pub import MQTTPublisher
 from mqtt.sub import MQTTSubscriberDevice
 
+INSTANCE = os.getenv('INSTANCE')
+
 # Definindo o caminho do arquivo HTML
 HTML_PATH = os.path.join(os.path.dirname(__file__), 'index.html')
 

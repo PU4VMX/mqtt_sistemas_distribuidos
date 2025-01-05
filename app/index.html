@@ -77,7 +77,7 @@
     async function toggleAtuador(status) {
       state.atuador = status;
       // Requisição GET para atualizar o estado do atuador
-      const response = await fetch(`http://127.0.0.1:8000/atuador/${status}`);
+      const response = await fetch(`http://127.0.0.1:81/atuador/${status}`);
       if (response.ok) {
         console.log(`Atuador: ${state.atuador ? "Ligado" : "Desligado"}`);
         

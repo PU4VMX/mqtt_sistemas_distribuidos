@@ -46,6 +46,11 @@ services:
       - casandra2
     networks:
       - app-network
+    environment:
+      - INSTANCE=1
+      - CASSANDRA_HOST=casandra1
+      - CASSANDRA_PORT=9042
+
 
   fastapi2:
     build:
@@ -61,6 +66,11 @@ services:
       - casandra2
     networks:
       - app-network
+    environment:
+      - INSTANCE=2
+      - CASSANDRA_HOST=casandra2
+      - CASSANDRA_PORT=9042
+ 
 
   nginx:
     image: nginx:alpine
