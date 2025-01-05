@@ -1,10 +1,81 @@
 services:
- mqtt:
-      image: toke/mosquitto
-      network_mode: bridge
-      container_name: mqtt
-      expose:
-        - 1883
-      ports:
-        - 1883:1883
-      restart: unless-stopped
+  mqtt:
+    image: toke/mosquitto
+    container_name: mqtt
+    expose:
+      - "1883"
+    ports:
+      - "1883:1883"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  casandra1:
+    image: cassandra:latest
+    container_name: casandra1
+    expose:
+      - "9042"
+    ports:
+      - "9042:9042"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  casandra2:
+    image: cassandra:latest
+    container_name: casandra2
+    expose:
+      - "9042"
+    ports:
+      - "9043:9042"  # Renomeado para evitar conflito com casandra1
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  fastapi1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: controller1
+    expose:
+      - "8000"
+    restart: unless-stopped
+    depends_on:
+      - mqtt
+      - casandra1
+      - casandra2
+    networks:
+      - app-network
+
+  fastapi2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: controller2
+    expose:
+      - "8000"
+    restart: unless-stopped
+    depends_on:
+      - mqtt
+      - casandra1
+      - casandra2
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "81:81"  # Acesse o serviço pela porta 80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf  # O arquivo de configuração do NGINX
+    depends_on:
+      - fastapi1
+      - fastapi2
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

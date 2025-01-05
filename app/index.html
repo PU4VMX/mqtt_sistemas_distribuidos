@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoramento do Solo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container mt-4">
+    <h1 class="text-center">Monitoramento do Solo</h1>
+
+    <!--Botões para ligar/desligar o atuador-->
+    <div class="row mt-4">
+      <div class="col-md-6">
+        <button id="ligar-btn" class="btn btn-success" onclick="toggleAtuador(true)">Ligar Atuador</button>
+      </div>
+      <div class="col-md-6">
+        <button id="desligar-btn" class="btn btn-danger" onclick="toggleAtuador(false)">Desligar Atuador</button>
+      </div>
+    </div>
+
+    <!-- Tabela e Gráfico de Umidade -->
+    <div class="row mt-5">
+      <div class="col-md-6">
+        <h3>Dados de Umidade do Solo</h3>
+        <table class="table table-bordered table-striped">
+          <thead>
+            <tr>
+              <th>Data e Hora</th>
+              <th>Umidade (%)</th>
+            </tr>
+          </thead>
+          <tbody id="umidade-tabela">
+            <!-- Dados inseridos dinamicamente -->
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <h3>Gráfico de Umidade</h3>
+        <canvas id="umidade-grafico"></canvas>
+      </div>
+    </div>
+
+    <!-- Tabela e Gráfico de Atuação -->
+    <div class="row mt-5">
+      <div class="col-md-6">
+        <h3>Histórico de Atuação</h3>
+        <table class="table table-bordered table-striped">
+          <thead>
+            <tr>
+              <th>Data e Hora</th>
+              <th>Status (Ligado/Desligado)</th>
+              <th>Gatilho</th>
+            </tr>
+          </thead>
+          <tbody id="atuador-tabela">
+            <!-- Dados inseridos dinamicamente -->
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <h3>Gráfico de Gantt - Atuação</h3>
+        <canvas id="gantt-grafico"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    const state = {
+      atuador: false
+    };
+
+    // Função para alternar o estado do atuador
+    async function toggleAtuador(status) {
+      state.atuador = status;
+      // Requisição GET para atualizar o estado do atuador
+      const response = await fetch(`http://127.0.0.1:8000/atuador/${status}`);
+      if (response.ok) {
+        console.log(`Atuador: ${state.atuador ? "Ligado" : "Desligado"}`);
+        
+        // Atualizar o texto e a cor dos botões
+        const ligarBtn = document.getElementById("ligar-btn");
+        const desligarBtn = document.getElementById("desligar-btn");
+
+        if (state.atuador) {
+          ligarBtn.classList.remove("btn-success");
+          ligarBtn.classList.add("btn-secondary");
+          desligarBtn.classList.remove("btn-danger");
+          desligarBtn.classList.add("btn-danger");
+          ligarBtn.textContent = "Atuador Ligado";
+        } else {
+          desligarBtn.classList.remove("btn-danger");
+          desligarBtn.classList.add("btn-secondary");
+          ligarBtn.classList.remove("btn-secondary");
+          ligarBtn.classList.add("btn-success");
+          desligarBtn.textContent = "Atuador Desligado";
+        }
+      } else {
+        alert("Erro ao atualizar o estado do atuador.");
+      }
+    }
+
+    // Dados de exemplo
+    const umidadeData = [
+      { datetime: "2025-01-01 12:00", umidade: 45 },
+      { datetime: "2025-01-01 13:00", umidade: 50 },
+      { datetime: "2025-01-01 14:00", umidade: 55 }
+    ];
+
+    const atuadorData = [
+      { datetime: "2025-01-01 12:00", status: true, gatilho: "Automático" },
+      { datetime: "2025-01-01 13:00", status: false, gatilho: "Manual" },
+      { datetime: "2025-01-01 14:00", status: true, gatilho: "Automático" }
+    ];
+
+    // Inserir dados na tabela de umidade
+    const umidadeTabela = document.getElementById('umidade-tabela');
+    umidadeData.forEach(item => {
+      const row = `<tr>
+        <td>${item.datetime}</td>
+        <td>${item.umidade}</td>
+      </tr>`;
+      umidadeTabela.innerHTML += row;
+    });
+
+    // Inserir dados na tabela de atuação
+    const atuadorTabela = document.getElementById('atuador-tabela');
+    atuadorData.forEach(item => {
+      const row = `<tr>
+        <td>${item.datetime}</td>
+        <td>${item.status ? "Ligado" : "Desligado"}</td>
+        <td>${item.gatilho}</td>
+      </tr>`;
+      atuadorTabela.innerHTML += row;
+    });
+
+    // Gráfico de linha (umidade)
+    const umidadeCtx = document.getElementById('umidade-grafico').getContext('2d');
+    new Chart(umidadeCtx, {
+      type: 'line',
+      data: {
+        labels: umidadeData.map(item => item.datetime),
+        datasets: [{
+          label: 'Umidade (%)',
+          data: umidadeData.map(item => item.umidade),
+          borderColor: 'blue',
+          borderWidth: 2,
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: 'Data e Hora' } },
+          y: { title: { display: true, text: 'Umidade (%)' } }
+        }
+      }
+    });
+
+    // Gráfico tipo Gantt (atuação)
+    const ganttCtx = document.getElementById('gantt-grafico').getContext('2d');
+    new Chart(ganttCtx, {
+      type: 'bar',
+      data: {
+        labels: atuadorData.map(item => item.datetime),
+        datasets: [{
+          label: 'Ligado',
+          data: atuadorData.map(item => item.status ? 1 : 0),
+          backgroundColor: atuadorData.map(item => item.status ? 'green' : 'red')
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Data e Hora' } },
+          y: {
+            title: { display: true, text: 'Status' },
+            ticks: { stepSize: 1, callback: value => value === 1 ? "Ligado" : "Desligado" }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
