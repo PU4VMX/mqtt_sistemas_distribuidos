@@ -8,7 +8,7 @@ from mqtt.pub import MQTTPublisher
 from mqtt.sub import MQTTSubscriberDevice
 from app.api import router
 from app.database import conexao
-from app.sync import Synchronizer
+from app.sync import MultiSynchronizer
 
 
 # Constantes de Configuração
@@ -18,7 +18,7 @@ BROKER = os.getenv("MQTT_BROKER", "192.168.2.187")  # IP padrão do broker MQTT
 PORT = int(os.getenv("MQTT_PORT", 1883))
 SUBSCRIBER_TOPIC = "esp32/umidade"
 PUBLISHER_TOPIC = "esp32/atuador"
-REMOTE_API_URL = f"http://{INSTANCE_PAIR}:8000/api/"
+
 
 
 # Inicializando FastAPI
@@ -94,7 +94,10 @@ def ensure_connection():
 # Inicializando serviços
 initialize_mqtt()
 threading.Thread(target=ensure_connection, daemon=True).start()
-synchronizer = Synchronizer(conexao, REMOTE_API_URL, sync_interval=60)
+
+
+remote_instances = ["http://controller1:8000/api", "http://controller2:8000/api"]
+synchronizer = MultiSynchronizer(conexao, remote_instances, sync_interval=60)
 synchronizer.start()
 
 
