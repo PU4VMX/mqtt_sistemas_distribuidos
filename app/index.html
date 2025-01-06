@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,9 +14,12 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container mt-4">
     <h1 class="text-center">Monitoramento do Solo</h1>
+    <h6 class="text-center">Sistema de Monitoramento e Controle de Umidade do Solo</h6>
+    <p>Instância: <span id="instancia-numero">Carregando...</span></p>
 
     <!--Botões para ligar/desligar o atuador-->
     <div class="row mt-4">
@@ -83,6 +87,20 @@
       atuador: false
     };
 
+    // Função para formatar a data no padrão brasileiro
+    function formatarDataBrasil(data) {
+      const options = { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: false 
+      };
+      return new Intl.DateTimeFormat('pt-BR', options).format(new Date(data));
+    }
+
     // Função para alternar o estado do atuador
     async function toggleAtuador(status) {
       state.atuador = status;
@@ -90,7 +108,7 @@
       const response = await fetch(`http://127.0.0.1:81/atuador/${status}`);
       if (response.ok) {
         console.log(`Atuador: ${state.atuador ? "Ligado" : "Desligado"}`);
-        
+
         // Atualizar o texto e a cor dos botões
         const ligarBtn = document.getElementById("ligar-btn");
         const desligarBtn = document.getElementById("desligar-btn");
@@ -123,7 +141,7 @@
         umidadeTabela.innerHTML = ''; // Limpar tabela antes de inserir
         data.forEach(item => {
           const row = `<tr>
-            <td>${item.data}</td>
+            <td>${formatarDataBrasil(item.data)}</td> <!-- Formatando a data -->
             <td>${item.valor}</td>
           </tr>`;
           umidadeTabela.innerHTML += row;
@@ -134,7 +152,7 @@
         new Chart(umidadeCtx, {
           type: 'line',
           data: {
-            labels: data.map(item => item.data),
+            labels: data.map(item => formatarDataBrasil(item.data)), // Formatando as labels de data
             datasets: [{
               label: 'Umidade (%)',
               data: data.map(item => item.valor),
@@ -166,7 +184,7 @@
         atuadorTabela.innerHTML = ''; // Limpar tabela antes de inserir
         data.forEach(item => {
           const row = `<tr>
-            <td>${item.timestamp}</td>
+            <td>${formatarDataBrasil(item.timestamp)}</td> <!-- Formatando a data -->
             <td>${item.estado ? "Ligado" : "Desligado"}</td>
             <td>${item.gatilho}</td>
           </tr>`;
@@ -178,7 +196,7 @@
         new Chart(ganttCtx, {
           type: 'bar',
           data: {
-            labels: data.map(item => item.timestamp),
+            labels: data.map(item => formatarDataBrasil(item.timestamp)), // Formatando as labels de data
             datasets: [{
               label: 'Ligado',
               data: data.map(item => item.estado ? 1 : 0),
@@ -204,11 +222,24 @@
       }
     }
 
+    async function get_instance() {
+      const response = await fetch("http://localhost:81/api/instance");
+      if (response.ok) {
+        const data = await response.json();
+        // Supondo que o número da instância esteja em 'data.instancia'
+        document.getElementById('instancia-numero').textContent = data.instance;
+      } else {
+        alert("Erro ao buscar dados de instância.");
+      }
+    }
+
     // Carregar os dados ao inicializar a página
-    window.onload = function() {
+    window.onload = function () {
       getUmidadeData();
       getAtuadorData();
+      get_instance();
     };
   </script>
 </body>
+
 </html>

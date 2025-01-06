@@ -9,6 +9,7 @@ from mqtt.sub import MQTTSubscriberDevice
 from app.api import router
 from app.database import conexao
 from app.sync import MultiSynchronizer
+import pytz
 
 
 # Constantes de Configuração
@@ -18,6 +19,8 @@ BROKER = os.getenv("MQTT_BROKER", "192.168.2.187")  # IP padrão do broker MQTT
 PORT = int(os.getenv("MQTT_PORT", 1883))
 SUBSCRIBER_TOPIC = "esp32/umidade"
 PUBLISHER_TOPIC = "esp32/atuador"
+
+brasil_tz = pytz.timezone('America/Sao_Paulo')
 
 
 
@@ -44,10 +47,10 @@ def initialize_mqtt():
 def umidade_processada(umidade):
     if umidade > 80:
         mqtt_publisher.publish("true")
-        conexao.insert_acionamento(uuid.uuid4(), datetime.now(), True, "automatico")
+        conexao.insert_acionamento(uuid.uuid4(), datetime.now(brasil_tz), True, "automatico")
     else:
         mqtt_publisher.publish("false")
-        conexao.insert_acionamento(uuid.uuid4(), datetime.now(), False, "automatico")
+        conexao.insert_acionamento(uuid.uuid4(), datetime.now(brasil_tz), False, "automatico")
 
 
 def handle_incoming_message(client, userdata, msg):
@@ -56,7 +59,7 @@ def handle_incoming_message(client, userdata, msg):
         print(f"Mensagem recebida no tópico {msg.topic}: {msg.payload.decode()}")
         umidade = float(msg.payload.decode())
         umidade_processada(umidade)
-        conexao.insert_umidade(uuid.uuid4(), datetime.now(), umidade)
+        conexao.insert_umidade(uuid.uuid4(), datetime.now(brasil_tz), umidade)
     except ValueError as e:
         print(f"Erro ao processar mensagem MQTT: {e}")
 
@@ -72,7 +75,7 @@ async def acionar_atuador(estado: str):
 
     mqtt_publisher.publish(estado)
     conexao.insert_acionamento(
-        uuid.uuid4(), datetime.now(), estado.lower() == "true", "manual"
+        uuid.uuid4(), datetime.now(brasil_tz), estado.lower() == "true", "manual"
     )
     return {"message": f"Estado do atuador alterado para {estado}"}
 

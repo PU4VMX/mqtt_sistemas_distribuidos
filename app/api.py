@@ -15,20 +15,28 @@ async def get_status():
     return {"status": "OK"}
 
 
+@router.get("/instance")
+async def get_instance():
+    """Função para retornar a instância do sistema."""
+    return {"instance": os.getenv("INSTANCE")}
+
+
 @router.get("/umidade")
 async def get_umidade():
     """Função para retornar os dados de umidade."""
     dados = conexao.get_umidade()
-    return [{"data": str(d.data), "valor": d.valor} for d in dados]
+    dados_ordenados = sorted(dados, key=lambda x: x.data)
+    return [{"data": str(d.data), "valor": d.valor} for d in dados_ordenados]
 
 
 @router.get("/acionamentos")
 async def get_acionamentos():
     """Função para retornar os dados de acionamentos."""
     dados = conexao.get_acionamentos()
+    dados_ordenados = sorted(dados, key=lambda x: x.timestamp)
     return [
         {"timestamp": str(d.timestamp), "estado": d.estado, "gatilho": d.gatilho}
-        for d in dados
+        for d in dados_ordenados
     ]
 
 @router.get("/home")
