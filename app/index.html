@@ -6,6 +6,12 @@
   <title>Monitoramento do Solo</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .tabela-scroll {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
   <div class="container mt-4">
@@ -25,17 +31,19 @@
     <div class="row mt-5">
       <div class="col-md-6">
         <h3>Dados de Umidade do Solo</h3>
-        <table class="table table-bordered table-striped">
-          <thead>
-            <tr>
-              <th>Data e Hora</th>
-              <th>Umidade (%)</th>
-            </tr>
-          </thead>
-          <tbody id="umidade-tabela">
-            <!-- Dados inseridos dinamicamente -->
-          </tbody>
-        </table>
+        <div class="tabela-scroll">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>Data e Hora</th>
+                <th>Umidade (%)</th>
+              </tr>
+            </thead>
+            <tbody id="umidade-tabela">
+              <!-- Dados inseridos dinamicamente -->
+            </tbody>
+          </table>
+        </div>
       </div>
       <div class="col-md-6">
         <h3>Gráfico de Umidade</h3>
@@ -46,22 +54,24 @@
     <!-- Tabela e Gráfico de Atuação -->
     <div class="row mt-5">
       <div class="col-md-6">
-        <h3>Histórico de Atuação</h3>
-        <table class="table table-bordered table-striped">
-          <thead>
-            <tr>
-              <th>Data e Hora</th>
-              <th>Status (Ligado/Desligado)</th>
-              <th>Gatilho</th>
-            </tr>
-          </thead>
-          <tbody id="atuador-tabela">
-            <!-- Dados inseridos dinamicamente -->
-          </tbody>
-        </table>
+        <h3>Histórico de Acionamentos</h3>
+        <div class="tabela-scroll">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>Data e Hora</th>
+                <th>Status (Ligado/Desligado)</th>
+                <th>Gatilho</th>
+              </tr>
+            </thead>
+            <tbody id="atuador-tabela">
+              <!-- Dados inseridos dinamicamente -->
+            </tbody>
+          </table>
+        </div>
       </div>
       <div class="col-md-6">
-        <h3>Gráfico de Gantt - Atuação</h3>
+        <h3>Gráfico de Acionamentos</h3>
         <canvas id="gantt-grafico"></canvas>
       </div>
     </div>
@@ -103,89 +113,102 @@
       }
     }
 
-    // Dados de exemplo
-    const umidadeData = [
-      { datetime: "2025-01-01 12:00", umidade: 45 },
-      { datetime: "2025-01-01 13:00", umidade: 50 },
-      { datetime: "2025-01-01 14:00", umidade: 55 }
-    ];
+    // Requisição para pegar dados de umidade
+    async function getUmidadeData() {
+      const response = await fetch("http://localhost:81/api/umidade");
+      if (response.ok) {
+        const data = await response.json();
+        // Inserir dados na tabela de umidade
+        const umidadeTabela = document.getElementById('umidade-tabela');
+        umidadeTabela.innerHTML = ''; // Limpar tabela antes de inserir
+        data.forEach(item => {
+          const row = `<tr>
+            <td>${item.data}</td>
+            <td>${item.valor}</td>
+          </tr>`;
+          umidadeTabela.innerHTML += row;
+        });
 
-    const atuadorData = [
-      { datetime: "2025-01-01 12:00", status: true, gatilho: "Automático" },
-      { datetime: "2025-01-01 13:00", status: false, gatilho: "Manual" },
-      { datetime: "2025-01-01 14:00", status: true, gatilho: "Automático" }
-    ];
-
-    // Inserir dados na tabela de umidade
-    const umidadeTabela = document.getElementById('umidade-tabela');
-    umidadeData.forEach(item => {
-      const row = `<tr>
-        <td>${item.datetime}</td>
-        <td>${item.umidade}</td>
-      </tr>`;
-      umidadeTabela.innerHTML += row;
-    });
-
-    // Inserir dados na tabela de atuação
-    const atuadorTabela = document.getElementById('atuador-tabela');
-    atuadorData.forEach(item => {
-      const row = `<tr>
-        <td>${item.datetime}</td>
-        <td>${item.status ? "Ligado" : "Desligado"}</td>
-        <td>${item.gatilho}</td>
-      </tr>`;
-      atuadorTabela.innerHTML += row;
-    });
-
-    // Gráfico de linha (umidade)
-    const umidadeCtx = document.getElementById('umidade-grafico').getContext('2d');
-    new Chart(umidadeCtx, {
-      type: 'line',
-      data: {
-        labels: umidadeData.map(item => item.datetime),
-        datasets: [{
-          label: 'Umidade (%)',
-          data: umidadeData.map(item => item.umidade),
-          borderColor: 'blue',
-          borderWidth: 2,
-          fill: false
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: { title: { display: true, text: 'Data e Hora' } },
-          y: { title: { display: true, text: 'Umidade (%)' } }
-        }
-      }
-    });
-
-    // Gráfico tipo Gantt (atuação)
-    const ganttCtx = document.getElementById('gantt-grafico').getContext('2d');
-    new Chart(ganttCtx, {
-      type: 'bar',
-      data: {
-        labels: atuadorData.map(item => item.datetime),
-        datasets: [{
-          label: 'Ligado',
-          data: atuadorData.map(item => item.status ? 1 : 0),
-          backgroundColor: atuadorData.map(item => item.status ? 'green' : 'red')
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          x: { title: { display: true, text: 'Data e Hora' } },
-          y: {
-            title: { display: true, text: 'Status' },
-            ticks: { stepSize: 1, callback: value => value === 1 ? "Ligado" : "Desligado" }
+        // Atualizar gráfico de umidade
+        const umidadeCtx = document.getElementById('umidade-grafico').getContext('2d');
+        new Chart(umidadeCtx, {
+          type: 'line',
+          data: {
+            labels: data.map(item => item.data),
+            datasets: [{
+              label: 'Umidade (%)',
+              data: data.map(item => item.valor),
+              borderColor: 'blue',
+              borderWidth: 2,
+              fill: false
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: { title: { display: true, text: 'Data e Hora' } },
+              y: { title: { display: true, text: 'Umidade (%)' } }
+            }
           }
-        }
+        });
+      } else {
+        alert("Erro ao buscar dados de umidade.");
       }
-    });
+    }
+
+    // Requisição para pegar dados de acionamentos (atuador)
+    async function getAtuadorData() {
+      const response = await fetch("http://localhost:81/api/acionamentos");
+      if (response.ok) {
+        const data = await response.json();
+        // Inserir dados na tabela de atuação
+        const atuadorTabela = document.getElementById('atuador-tabela');
+        atuadorTabela.innerHTML = ''; // Limpar tabela antes de inserir
+        data.forEach(item => {
+          const row = `<tr>
+            <td>${item.timestamp}</td>
+            <td>${item.estado ? "Ligado" : "Desligado"}</td>
+            <td>${item.gatilho}</td>
+          </tr>`;
+          atuadorTabela.innerHTML += row;
+        });
+
+        // Atualizar gráfico de atuação
+        const ganttCtx = document.getElementById('gantt-grafico').getContext('2d');
+        new Chart(ganttCtx, {
+          type: 'bar',
+          data: {
+            labels: data.map(item => item.timestamp),
+            datasets: [{
+              label: 'Ligado',
+              data: data.map(item => item.estado ? 1 : 0),
+              backgroundColor: data.map(item => item.estado ? 'green' : 'red')
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              x: { title: { display: true, text: 'Data e Hora' } },
+              y: {
+                title: { display: true, text: 'Status' },
+                ticks: { stepSize: 1, callback: value => value === 1 ? "Ligado" : "Desligado" }
+              }
+            }
+          }
+        });
+      } else {
+        alert("Erro ao buscar dados de atuação.");
+      }
+    }
+
+    // Carregar os dados ao inicializar a página
+    window.onload = function() {
+      getUmidadeData();
+      getAtuadorData();
+    };
   </script>
 </body>
 </html>

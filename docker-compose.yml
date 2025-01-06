@@ -15,39 +15,45 @@ services:
           memory: 512m
           cpus: "0.5"
 
-  casandra1:
-    image: cassandra:latest
-    container_name: casandra1
+  scylla1:
+    image: scylladb/scylla:latest
+    container_name: scylla1
     expose:
       - "9042"
     ports:
       - "9042:9042"
     environment:
-      - CASSANDRA_USER=admin
-      - CASSANDRA_PASSWORD=admin
+      - SCYLLA_CLUSTER_NAME=scylla-cluster
+      - SCYLLA_DC=dc1
+      - SCYLLA_RACK=rack1
+      - SCYLLA_LISTEN_ADDRESS=scylla1
+      - SCYLLA_LISTEN_INTERFACE=eth0
+      - SCYLLA_BROADCAST_ADDRESS=scylla1
+      - SCYLLA_BROADCAST_INTERFACE=eth0
     networks:
       - app-network
     volumes:
-      - ./cassandra1:/var/lib/cassandra
-   
+      - ./scylla1:/var/lib/scylla
 
-
-  casandra2:
-    image: cassandra:latest
-    container_name: casandra2
+  scylla2:
+    image: scylladb/scylla:latest
+    container_name: scylla2
     expose:
       - "9042"
     ports:
       - "9043:9042"
     environment:
-      - CASSANDRA_USER=admin
-      - CASSANDRA_PASSWORD=admin
+      - SCYLLA_CLUSTER_NAME=scylla-cluster
+      - SCYLLA_DC=dc1
+      - SCYLLA_RACK=rack2
+      - SCYLLA_LISTEN_ADDRESS=scylla2
+      - SCYLLA_LISTEN_INTERFACE=eth0
+      - SCYLLA_BROADCAST_ADDRESS=scylla2
+      - SCYLLA_BROADCAST_INTERFACE=eth0
     networks:
       - app-network
     volumes:
-      - ./cassandra2:/var/lib/cassandra
-   
-
+      - ./scylla2:/var/lib/scylla
 
   fastapi1:
     build:
@@ -61,14 +67,14 @@ services:
     restart: unless-stopped
     depends_on:
       - mqtt
-      - casandra1
-      - casandra2
+      - scylla1
+      - scylla2
     networks:
       - app-network
     environment:
       - INSTANCE=1
-      - DB_CLUSTERS=casandra1
-      - INSTANCE_PAIR=fastapi2
+      - DB_CLUSTERS=scylla1
+      - INSTANCE_PAIR=controller2
     deploy:
       resources:
         limits:
@@ -87,14 +93,14 @@ services:
     restart: unless-stopped
     depends_on:
       - mqtt
-      - casandra1
-      - casandra2
+      - scylla1
+      - scylla2
     networks:
       - app-network
     environment:
       - INSTANCE=2
-      - DB_CLUSTERS=casandra2
-      - INSTANCE_PAIR=fastapi1
+      - DB_CLUSTERS=scylla2
+      - INSTANCE_PAIR=controller1
     deploy:
       resources:
         limits:
@@ -125,5 +131,5 @@ networks:
     driver: bridge
 
 volumes:
-  cassandra1:
-  cassandra2:
+  scylla1:
+  scylla2:

@@ -41,11 +41,11 @@ class Database:
         )
 
     def get_umidade(self):
-        result = self.session.execute("SELECT * FROM umidade;")
+        result = self.session.execute("SELECT * FROM umidade LIMIT 100;")
         return result
 
     def get_acionamentos(self):
-        result = self.session.execute("SELECT * FROM acionamentos;")
+        result = self.session.execute("SELECT * FROM acionamentos LIMIT 100;")
         return result
 
     def close(self):
