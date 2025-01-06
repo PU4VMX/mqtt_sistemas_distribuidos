@@ -22,18 +22,15 @@ services:
       - "9042"
     ports:
       - "9042:9042"
-    restart: unless-stopped
+    environment:
+      - CASSANDRA_USER=admin
+      - CASSANDRA_PASSWORD=admin
     networks:
       - app-network
-    environment:
-      - CASSANDRA_USER=my_user
-      - CASSANDRA_PASSWORD=my_password
-      - CASSANDRA_KEYSPACE=my_keyspace
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-          cpus: "1.5"
+    volumes:
+      - ./cassandra1:/var/lib/cassandra
+   
+
 
   casandra2:
     image: cassandra:latest
@@ -42,18 +39,15 @@ services:
       - "9042"
     ports:
       - "9043:9042"
-    restart: unless-stopped
+    environment:
+      - CASSANDRA_USER=admin
+      - CASSANDRA_PASSWORD=admin
     networks:
       - app-network
-    environment:
-      - CASSANDRA_USER=my_user
-      - CASSANDRA_PASSWORD=my_password
-      - CASSANDRA_KEYSPACE=my_keyspace
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-          cpus: "1.5"
+    volumes:
+      - ./cassandra2:/var/lib/cassandra
+   
+
 
   fastapi1:
     build:
@@ -73,11 +67,7 @@ services:
       - app-network
     environment:
       - INSTANCE=1
-      - CASSANDRA_HOST=casandra1
-      - CASSANDRA_PORT=9042
-      - CASSANDRA_USER=my_user
-      - CASSANDRA_PASSWORD=my_password
-      - CASSANDRA_KEYSPACE=my_keyspace
+      - DB_CLUSTERS=casandra1
     deploy:
       resources:
         limits:
@@ -102,11 +92,7 @@ services:
       - app-network
     environment:
       - INSTANCE=2
-      - CASSANDRA_HOST=casandra2
-      - CASSANDRA_PORT=9042
-      - CASSANDRA_USER=my_user
-      - CASSANDRA_PASSWORD=my_password
-      - CASSANDRA_KEYSPACE=my_keyspace
+      - DB_CLUSTERS=casandra2
     deploy:
       resources:
         limits:
@@ -135,3 +121,7 @@ services:
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  cassandra1:
+  cassandra2:
