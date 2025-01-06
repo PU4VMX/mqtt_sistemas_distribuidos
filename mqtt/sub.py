@@ -60,7 +60,7 @@ class MQTTSubscriberDevice:
         :param userdata: Dados do usuário (não utilizado aqui).
         :param msg: Mensagem recebida.
         """
-        print(f"Mensagem recebida no tópico {msg.topic}: {msg.payload.decode()}")
+        return msg.payload.decode()
 
     def start(self):
         """

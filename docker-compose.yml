@@ -9,6 +9,11 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   casandra1:
     image: cassandra:latest
@@ -20,6 +25,15 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    environment:
+      - CASSANDRA_USER=my_user
+      - CASSANDRA_PASSWORD=my_password
+      - CASSANDRA_KEYSPACE=my_keyspace
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "1.5"
 
   casandra2:
     image: cassandra:latest
@@ -27,10 +41,19 @@ services:
     expose:
       - "9042"
     ports:
-      - "9043:9042"  # Renomeado para evitar conflito com casandra1
+      - "9043:9042"
     restart: unless-stopped
     networks:
       - app-network
+    environment:
+      - CASSANDRA_USER=my_user
+      - CASSANDRA_PASSWORD=my_password
+      - CASSANDRA_KEYSPACE=my_keyspace
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "1.5"
 
   fastapi1:
     build:
@@ -39,6 +62,8 @@ services:
     container_name: controller1
     expose:
       - "8000"
+    ports:
+      - "8001:8000"  # Porta mapeada externamente para fastapi1
     restart: unless-stopped
     depends_on:
       - mqtt
@@ -50,7 +75,14 @@ services:
       - INSTANCE=1
       - CASSANDRA_HOST=casandra1
       - CASSANDRA_PORT=9042
-
+      - CASSANDRA_USER=my_user
+      - CASSANDRA_PASSWORD=my_password
+      - CASSANDRA_KEYSPACE=my_keyspace
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1"
 
   fastapi2:
     build:
@@ -59,6 +91,8 @@ services:
     container_name: controller2
     expose:
       - "8000"
+    ports:
+      - "8002:8000"  # Porta mapeada externamente para fastapi2
     restart: unless-stopped
     depends_on:
       - mqtt
@@ -70,21 +104,33 @@ services:
       - INSTANCE=2
       - CASSANDRA_HOST=casandra2
       - CASSANDRA_PORT=9042
- 
+      - CASSANDRA_USER=my_user
+      - CASSANDRA_PASSWORD=my_password
+      - CASSANDRA_KEYSPACE=my_keyspace
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1"
 
   nginx:
     image: nginx:alpine
     container_name: nginx
     ports:
-      - "81:81"  # Acesse o serviço pela porta 80
+      - "81:81"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf  # O arquivo de configuração do NGINX
+      - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - fastapi1
       - fastapi2
     networks:
       - app-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
 
 networks:
   app-network:
