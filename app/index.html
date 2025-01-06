@@ -87,6 +87,10 @@
       atuador: false
     };
 
+    // Variáveis globais para armazenar os gráficos
+    let umidadeGrafico = null;
+    let atuadorGrafico = null;
+
     // Função para formatar a data no padrão brasileiro
     function formatarDataBrasil(data) {
       const options = { 
@@ -139,7 +143,7 @@
         // Inserir dados na tabela de umidade
         const umidadeTabela = document.getElementById('umidade-tabela');
         umidadeTabela.innerHTML = ''; // Limpar tabela antes de inserir
-        data.forEach(item => {
+        data.reverse().forEach(item => {
           const row = `<tr>
             <td>${formatarDataBrasil(item.data)}</td> <!-- Formatando a data -->
             <td>${item.valor}</td>
@@ -149,13 +153,19 @@
 
         // Atualizar gráfico de umidade
         const umidadeCtx = document.getElementById('umidade-grafico').getContext('2d');
-        new Chart(umidadeCtx, {
+
+        // Destruir o gráfico anterior, se houver
+        if (umidadeGrafico) {
+          umidadeGrafico.destroy();
+        }
+
+        umidadeGrafico = new Chart(umidadeCtx, {
           type: 'line',
           data: {
-            labels: data.map(item => formatarDataBrasil(item.data)), // Formatando as labels de data
+            labels: data.reverse().map(item => formatarDataBrasil(item.data)), // Formatando as labels de data
             datasets: [{
               label: 'Umidade (%)',
-              data: data.map(item => item.valor),
+              data: data.reverse().map(item => item.valor),
               borderColor: 'blue',
               borderWidth: 2,
               fill: false
@@ -182,7 +192,7 @@
         // Inserir dados na tabela de atuação
         const atuadorTabela = document.getElementById('atuador-tabela');
         atuadorTabela.innerHTML = ''; // Limpar tabela antes de inserir
-        data.forEach(item => {
+        data.reverse().forEach(item => { // Inverte os dados para exibir os mais recentes primeiro
           const row = `<tr>
             <td>${formatarDataBrasil(item.timestamp)}</td> <!-- Formatando a data -->
             <td>${item.estado ? "Ligado" : "Desligado"}</td>
@@ -193,14 +203,20 @@
 
         // Atualizar gráfico de atuação
         const ganttCtx = document.getElementById('gantt-grafico').getContext('2d');
-        new Chart(ganttCtx, {
+        
+        // Destruir o gráfico anterior, se houver
+        if (atuadorGrafico) {
+          atuadorGrafico.destroy();
+        }
+
+        atuadorGrafico = new Chart(ganttCtx, {
           type: 'bar',
           data: {
-            labels: data.map(item => formatarDataBrasil(item.timestamp)), // Formatando as labels de data
+            labels: data.reverse().map(item => formatarDataBrasil(item.timestamp)), // Formatando as labels de data
             datasets: [{
               label: 'Ligado',
-              data: data.map(item => item.estado ? 1 : 0),
-              backgroundColor: data.map(item => item.estado ? 'green' : 'red')
+              data: data.reverse().map(item => item.estado ? 1 : 0),
+              backgroundColor: data.reverse().map(item => item.estado ? 'green' : 'red')
             }]
           },
           options: {
@@ -239,6 +255,14 @@
       getAtuadorData();
       get_instance();
     };
+
+    // Atualizar os dados a cada 5 segundos
+    setInterval(() => {
+      get_instance();
+      getUmidadeData();
+      getAtuadorData();
+    }, 5000);
+
   </script>
 </body>
 

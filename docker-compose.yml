@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   mqtt:
     image: toke/mosquitto
@@ -26,14 +28,14 @@ services:
       - SCYLLA_CLUSTER_NAME=scylla-cluster
       - SCYLLA_DC=dc1
       - SCYLLA_RACK=rack1
-      - SCYLLA_LISTEN_ADDRESS=scylla1
+      - SCYLLA_LISTEN_ADDRESS=0.0.0.0  # Escutando em todas as interfaces
       - SCYLLA_LISTEN_INTERFACE=eth0
       - SCYLLA_BROADCAST_ADDRESS=scylla1
       - SCYLLA_BROADCAST_INTERFACE=eth0
     networks:
       - app-network
     volumes:
-      - ./scylla1:/var/lib/scylla
+      - scylla-data:/var/lib/scylla  # Volume persistente para os dados
 
   scylla2:
     image: scylladb/scylla:latest
@@ -46,14 +48,14 @@ services:
       - SCYLLA_CLUSTER_NAME=scylla-cluster
       - SCYLLA_DC=dc1
       - SCYLLA_RACK=rack2
-      - SCYLLA_LISTEN_ADDRESS=scylla2
+      - SCYLLA_LISTEN_ADDRESS=0.0.0.0  # Escutando em todas as interfaces
       - SCYLLA_LISTEN_INTERFACE=eth0
       - SCYLLA_BROADCAST_ADDRESS=scylla2
       - SCYLLA_BROADCAST_INTERFACE=eth0
     networks:
       - app-network
     volumes:
-      - ./scylla2:/var/lib/scylla
+      - scylla-data:/var/lib/scylla  # Volume persistente para os dados
 
   fastapi1:
     build:
@@ -63,7 +65,7 @@ services:
     expose:
       - "8000"
     ports:
-      - "8001:8000"  # Porta mapeada externamente para fastapi1
+      - "8001:8000"
     restart: unless-stopped
     depends_on:
       - mqtt
@@ -73,8 +75,9 @@ services:
       - app-network
     environment:
       - INSTANCE=1
-      - DB_CLUSTERS=scylla1
+      - DB_CLUSTERS=scylla1,scylla2
       - INSTANCE_PAIR=controller2
+    entrypoint: ["./wait-for-it.sh", "scylla1:9042", "scylla2:9042", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     deploy:
       resources:
         limits:
@@ -89,7 +92,7 @@ services:
     expose:
       - "8000"
     ports:
-      - "8002:8000"  # Porta mapeada externamente para fastapi2
+      - "8002:8000"
     restart: unless-stopped
     depends_on:
       - mqtt
@@ -99,8 +102,9 @@ services:
       - app-network
     environment:
       - INSTANCE=2
-      - DB_CLUSTERS=scylla2
+      - DB_CLUSTERS=scylla1,scylla2
       - INSTANCE_PAIR=controller1
+    entrypoint: ["./wait-for-it.sh", "scylla1:9042", "scylla2:9042", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     deploy:
       resources:
         limits:
@@ -131,5 +135,5 @@ networks:
     driver: bridge
 
 volumes:
-  scylla1:
-  scylla2:
+  scylla-data:
+    driver: local
